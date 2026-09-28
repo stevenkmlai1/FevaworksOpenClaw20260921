@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>To-Do List</title>
+<style>
+  :root {
+    --bg: #f4f6fb;
+    --card: #ffffff;
+    --accent: #2563eb;
+    --danger: #dc2626;
+    --text: #1f2937;
+    --muted: #6b7280;
+    --border: #e5e7eb;
+  }
+
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+
+  body {
+    font-family: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    display: flex;
+    justify-content: center;
+    padding: 24px 16px 64px;
+    line-height: 1.5;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 620px;
+  }
+
+  h1 {
+    font-size: 2rem;
+    text-align: center;
+    margin-bottom: 4px;
+  }
+
+  .summary {
+    text-align: center;
+    color: var(--muted);
+    font-size: 1.15rem;
+    margin-bottom: 20px;
+  }
+
+  .input-row {
+    display: flex;
+    gap: 8px;
+    margin-bottom: 20px;
+  }
+
+  .input-row input {
+    flex: 1;
+    padding: 14px 16px;
+    font-size: 1.15rem;
+    border: 2px solid var(--border);
+    border-radius: 10px;
+    outline: none;
+  }
+
+  .input-row input:focus {
+    border-color: var(--accent);
+  }
+
+  .input-row button {
+    padding: 14px 22px;
+    font-size: 1.15rem;
+    background: var(--accent);
+    color: #fff;
+    border: none;
+    border-radius: 10px;
+    cursor: pointer;
+    white-space: nowrap;
+  }
+
+  .input-row button:hover { background: #1d4ed8; }
+
+  .list {
+    list-style: none;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+  }
+
+  .list li {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 14px 16px;
+    font-size: 1.2rem;
+    word-break: break-word;
+  }
+
+  .list li input[type="checkbox"] {
+    width: 24px;
+    height: 24px;
+    flex-shrink: 0;
+    cursor: pointer;
+  }
+
+  .task-text { flex: 1; }
+
+  .task-text.done {
+    text-decoration: line-through;
+    color: var(--muted);
+  }
+
+  .delete-btn {
+    background: none;
+    border: none;
+    color: var(--danger);
+    font-size: 1.3rem;
+    cursor: pointer;
+    flex-shrink: 0;
+    padding: 0 4px;
+    line-height: 1;
+  }
+
+  .delete-btn:hover { opacity: 0.7; }
+
+  .clear-done {
+    display: block;
+    margin: 20px auto 0;
+    padding: 12px 24px;
+    font-size: 1.05rem;
+    background: none;
+    border: 2px solid var(--danger);
+    color: var(--danger);
+    border-radius: 10px;
+    cursor: pointer;
+  }
+
+  .clear-done:hover { background: var(--danger); color: #fff; }
+
+  .empty {
+    text-align: center;
+    color: var(--muted);
+    font-size: 1.1rem;
+    padding: 30px 0;
+  }
+</style>
+</head>
+<body>
+  <div class="app">
+    <h1>📋 To-Do List</h1>
+    <p class="summary" id="summary">未完成 0／總數 0</p>
+
+    <div class="input-row">
+      <input id="task-input" type="text" placeholder="輸入待辦事項…" autocomplete="off">
+      <button id="add-btn">新增</button>
+    </div>
+
+    <ul class="list" id="list"></ul>
+    <p class="empty" id="empty" hidden>尚無待辦事項</p>
+
+    <button class="clear-done" id="clear-done" hidden>🗑 清除已完成</button>
+  </div>
+
+<script>
+(function () {
+  const STORAGE_KEY = "todo-items-v1";
+  const input = document.getElementById("task-input");
+  const addBtn = document.getElementById("add-btn");
+  const list = document.getElementById("list");
+  const summary = document.getElementById("summary");
+  const empty = document.getElementById("empty");
+  const clearDone = document.getElementById("clear-done");
+
+  // Load tasks from localStorage
+  let tasks = [];
+  try {
+    tasks = JSON.parse(localStorage.getItem(STORAGE_KEY)) || [];
+  } catch (e) {
+    tasks = [];
+  }
+
+  function save() {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(tasks));
+  }
+
+  function render() {
+    list.innerHTML = "";
+    const total = tasks.length;
+    const undone = tasks.filter(function (t) { return !t.done; }).length;
+    summary.textContent = "未完成 " + undone + "／總數 " + total;
+    empty.hidden = total !== 0;
+    clearDone.hidden = tasks.every(function (t) { return !t.done; });
+
+    tasks.forEach(function (task, index) {
+      const li = document.createElement("li");
+
+      const checkbox = document.createElement("input");
+      checkbox.type = "checkbox";
+      checkbox.checked = task.done;
+      checkbox.addEventListener("change", function () {
+        task.done = checkbox.checked;
+        save();
+        render();
+      });
+
+      const span = document.createElement("span");
+      span.className = "task-text" + (task.done ? " done" : "");
+      span.textContent = task.text;
+
+      const del = document.createElement("button");
+      del.className = "delete-btn";
+      del.textContent = "✕";
+      del.setAttribute("aria-label", "刪除");
+      del.addEventListener("click", function () {
+        tasks.splice(index, 1);
+        save();
+        render();
+      });
+
+      li.appendChild(checkbox);
+      li.appendChild(span);
+      li.appendChild(del);
+      list.appendChild(li);
+    });
+  }
+
+  function addTask() {
+    const text = input.value.trim();
+    if (!text) return;
+    tasks.push({ text: text, done: false });
+    input.value = "";
+    save();
+    render();
+    input.focus();
+  }
+
+  addBtn.addEventListener("click", addTask);
+  input.addEventListener("keydown", function (e) {
+    if (e.key === "Enter") addTask();
+  });
+
+  clearDone.addEventListener("click", function () {
+    tasks = tasks.filter(function (t) { return !t.done; });
+    save();
+    render();
+  });
+
+  render();
+})();
+</script>
+</body>
+</html>
